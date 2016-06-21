@@ -1,0 +1,5 @@
+Given a marc file containing all shelving locations for all branches, and a software that is not capable of analyzing the item records and doing this work on import, we script a solution.
+
+Take a MARC file, concatenate the branch code onto the shelving location, and output a list of unique values to stdout
+
+Usage: 'php php-filter-marc.php --item-tag=999 --input-file=input.mrc --output-file=output.mrc'
