@@ -2,4 +2,4 @@ Given a marc file containing all shelving locations for all branches, and a soft
 
 Take a MARC file, concatenate the branch code onto the shelving location, and add to a new subfield.
 
-Usage: 'php php-filter-marc.php --item-tag=999 --input-file=input.mrc --output-file=output.mrc'
+Usage: 'php php-filter-marc.php --item-tag=999 --input-file=input.mrc --output-file=output.mrc --logfile=report.log'
