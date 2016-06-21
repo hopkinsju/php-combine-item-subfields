@@ -24,10 +24,11 @@ function print_help($message)
     --shelf-subfield: subfield of item tag containing shelf location
     --input-file: MARC file to operate on
     --output-file: destination file
+    --logfile: report unique shelving locations in a file
 
   Example usage:
   php php-filter-marc.php --item-tag=999 --branch-subfield=m
-    --shelf-subfield=l --input-file=input.mrc --output-file=output.mrc
+    --shelf-subfield=l --input-file=input.mrc --output-file=output.mrc --logfile=locations.log
 
 
 EOL;
@@ -36,13 +37,31 @@ EOL;
   exit(1);
 }
 
+function finalReport($log, $locs, $items, $records) {
+  asort($locs);
+  $logText = "-------------------------\n";
+  $logText .= "Location Summary\n";
+  $logText .= "-------------------------\n";
+  foreach ($locs as $loc) {
+    $logText .= "$loc\n";
+  }
+  $logText .= "-------------------------\n";
+  $logText .= "Processed $items items in $records records.\n";
+  $logText .= "-------------------------\n";
+  $logFile = fopen($log, "wb");
+  fwrite($logFile, $logText);
+  fclose($logFile);
+
+}
+
 $shortopts = "";
 $longopts = array(
   "item-tag:", // MARC tag containing item data that we will search
   "branch-subfield:", // subfield of item tag containing branch data
   "shelf-subfield:", // subfield of item tag containing shelf location
   "input-file:", // MARC file to operate on
-  "output-file:" // destination file
+  "output-file:", // destination file
+  "logfile:" // report unique shelving locations
 );
 $options = getopt($shortopts, $longopts);
 
@@ -56,16 +75,33 @@ $outputFileName = $options['output-file'];
 $itemTag = $options['item-tag'];
 $branchSubfield = $options['branch-subfield'];
 $shelfSubfield = $options['shelf-subfield'];
+$logFileName = $options ['logfile'];
 
-$bibs = new File_MARC($options['input-file']);
+try {
+   if ( !file_exists($inputFile) ) {
+     throw new Exception('Input file not found.');
+   }
 
-// $record = $bibs->next();
-//$items = $record->getFields($itemTag);
+   $outputFile = fopen($outputFileName, "wb");
+   if ( !$outputFile ) {
+     throw new Exception('Could not open output file for writing.');
+   }
 
-$outputFile = fopen($outputFileName, "wb");
+   $logFile = fopen($logFileName, "wb");
+   if (!$logFile) {
+     throw new Exception('Could not open log file for writing');
+   }
+   fclose($logFile);
+ } catch ( Exception $e ) {
+   echo "Exiting: ".$e->getMessage();
+   exit();
+ }
+
+$bibs = new File_MARC($inputFile);
 $locationList = array();
 $itemCount = 0;
 $recordCount = 0;
+
 while ($record = $bibs->next()) {
   foreach($record->getFields($itemTag) as $item => $subfields) {
     $itemCount++;
@@ -82,17 +118,18 @@ while ($record = $bibs->next()) {
       array_push($locationList, $combinedField);
     }
   }
+
   fwrite($outputFile, $record->toRaw());
   $recordCount++;
-  echo "Processed $itemCount items in $recordCount records.\n";
+
+  if ($recordCount % 10000 == 0) {
+    echo "Processing: $itemCount items in $recordCount records so far.\n";
+  }
 }
 
 fclose($outputFile);
-$locationList = asort($locationList);
-foreach ($locationList as $loc) {
-  print "$loc\n";
-}
-print "Processed $itemCount items in $recordCount records.\n";
 
+finalReport($logFileName, $locationList, $itemCount, $recordCount);
 
+echo "Job done, check $logFileName for details."
 ?>
