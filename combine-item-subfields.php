@@ -1,12 +1,5 @@
 <?php
 
-// php php-filter-marc.php
-// --item-tag 999
-// --branch-subfield m
-// --shelf-subfield l
-// --input-file input.mrc
-// --output-file output.mrc
-
 require_once 'File/MARC.php';
 
 function print_help($message)
@@ -27,7 +20,7 @@ function print_help($message)
     --logfile: report unique shelving locations in a file
 
   Example usage:
-  php php-filter-marc.php --item-tag=999 --branch-subfield=m
+  php combine-item-subfields.php --item-tag=999 --branch-subfield=m
     --shelf-subfield=l --input-file=input.mrc --output-file=output.mrc --logfile=locations.log
 
 
@@ -38,6 +31,8 @@ EOL;
 }
 
 function finalReport($log, $locs, $items, $records) {
+	// Output a summary of unique values for the combined fields
+  // and a count of items/records processed
   asort($locs);
   $logText = "-------------------------\n";
   $logText .= "Location Summary\n";
@@ -51,7 +46,6 @@ function finalReport($log, $locs, $items, $records) {
   $logFile = fopen($log, "wb");
   fwrite($logFile, $logText);
   fclose($logFile);
-
 }
 
 $shortopts = "";
@@ -78,6 +72,7 @@ $shelfSubfield = $options['shelf-subfield'];
 $logFileName = $options ['logfile'];
 
 try {
+	// make sure all the files we will use are available
    if ( !file_exists($inputFile) ) {
      throw new Exception('Input file not found.');
    }
@@ -112,8 +107,12 @@ while ($record = $bibs->next()) {
         $branchData = $value->getdata();
       }
     }
+		// Create a pipe separated set of both values and add to a new field.
+		// TODO: add option to specify a subfield other than $z
+		// TODO: add check for the possibility that subfield already exists
     $combinedField = "$branchData|$shelfData";
     $subfields->appendSubfield(new File_MARC_Subfield('z', $combinedField));
+		// Build the list for the report
     if (!in_array($combinedField, $locationList)) {
       array_push($locationList, $combinedField);
     }
@@ -122,6 +121,7 @@ while ($record = $bibs->next()) {
   fwrite($outputFile, $record->toRaw());
   $recordCount++;
 
+	// TODO: could probably add the ability to quiet this output, and the "job done" statement at the end
   if ($recordCount % 10000 == 0) {
     echo "Processing: $itemCount items in $recordCount records so far.\n";
   }
